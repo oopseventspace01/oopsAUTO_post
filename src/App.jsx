@@ -31,19 +31,24 @@ function OptionCard({ selected, onClick, badge, title, sub }) {
   )
 }
 
-function ContentStep({ contentSrc, onSelect, customText, setCustomText }) {
+function ContentStep({ contentSrc, onSelect, customText, setCustomText, dbPreview, loadingDb }) {
   return (
     <div>
       <p style={{ fontSize: "11px", color: "#4A4A4A", marginTop: 0, marginBottom: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>文案來源</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
-        <OptionCard selected={contentSrc === "db"} onClick={() => onSelect("db")} badge="DB" title="資料庫文案" sub="n8n 自動讀取" />
+        <OptionCard selected={contentSrc === "db"} onClick={() => onSelect("db")} badge="DB" title="資料庫文案" sub="AI 自動潤飾" />
         <OptionCard selected={contentSrc === "custom"} onClick={() => onSelect("custom")} badge="✍" title="自行輸入" sub="自由撰寫" />
       </div>
 
       {contentSrc === "db" && (
-        <div style={{ padding: "14px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#555", textAlign: "center", lineHeight: "1.7" }}>
-          發布時將由 n8n 自動從資料庫讀取文案
-        </div>
+        loadingDb
+          ? <div style={{ padding: "18px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#555", textAlign: "center" }}>
+              讀取資料庫中...
+            </div>
+          : <div style={{ padding: "14px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#AAA", lineHeight: "1.7" }}>
+              <div style={{ fontSize: "10px", color: "#3A3A3A", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>資料庫原始文案（發布時由 AI 潤飾）</div>
+              {dbPreview || "（無資料）"}
+            </div>
       )}
 
       {contentSrc === "custom" && (
@@ -216,6 +221,8 @@ export default function App() {
   const [customText, setCustomText] = useState("")
   const [imgFile, setImgFile] = useState(null)
   const [imgPreview, setImgPreview] = useState(null)
+  const [dbPreview, setDbPreview] = useState("")
+  const [loadingDb, setLoadingDb] = useState(false)
   const [posting, setPosting] = useState(false)
   const [posted, setPosted] = useState(false)
   const [postError, setPostError] = useState(null)
@@ -229,7 +236,22 @@ export default function App() {
   const openModal = (id) => {
     setModal(id); setStep(1); setContentSrc(null); setCustomText("")
     setImgFile(null); setImgPreview(null)
+    setDbPreview(""); setLoadingDb(false)
     setPosting(false); setPosted(false); setPostError(null); setPostLink(null)
+  }
+
+  const selectContentSrc = async (src) => {
+    setContentSrc(src)
+    if (src !== "db") return
+    setLoadingDb(true)
+    try {
+      const res = await fetch("https://oops01.zeabur.app/webhook/get-content")
+      const data = await res.json()
+      setDbPreview(data.content ?? "（無資料）")
+    } catch {
+      setDbPreview("無法讀取資料庫，請稍後再試")
+    }
+    setLoadingDb(false)
   }
 
   const handleFileChange = (e) => {
@@ -434,8 +456,9 @@ export default function App() {
                 <SuccessView platform={platform} onClose={() => setModal(null)} postLink={postLink} />
               ) : step === 1 ? (
                 <ContentStep
-                  contentSrc={contentSrc} onSelect={setContentSrc}
+                  contentSrc={contentSrc} onSelect={selectContentSrc}
                   customText={customText} setCustomText={setCustomText}
+                  dbPreview={dbPreview} loadingDb={loadingDb}
                 />
               ) : step === 2 && modal !== "threads" ? (
                 <ImageStep
@@ -443,7 +466,7 @@ export default function App() {
                 />
               ) : (
                 <PreviewStep
-                  content={contentSrc === "db" ? "（發布時由 n8n 從資料庫讀取）" : customText}
+                  content={contentSrc === "db" ? dbPreview : customText}
                   imgOpt="upload" imgPreview={imgPreview}
                   aiImgPrompt="" platform={platform}
                 />
