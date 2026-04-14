@@ -87,11 +87,11 @@ function ImageStep({ imgPreview, fileRef, onFileChange }) {
   )
 }
 
-function PreviewStep({ content, imgOpt, imgPreview, aiImgPrompt, platform }) {
+function PreviewStep({ content, imgPreview, platform, generating }) {
   return (
     <div>
       <p style={{ fontSize: "11px", color: "#4A4A4A", marginTop: 0, marginBottom: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>貼文預覽</p>
-      <div style={{ background: "#0E0E0E", border: "1px solid #1E1E1E", borderRadius: "12px", overflow: "hidden", marginBottom: "12px" }}>
+      <div style={{ background: "#0E0E0E", border: "1px solid #1E1E1E", borderRadius: "12px", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 14px", borderBottom: "1px solid #181818" }}>
           <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: platform.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: "900", color: "#FFF" }}>
             O
@@ -101,16 +101,11 @@ function PreviewStep({ content, imgOpt, imgPreview, aiImgPrompt, platform }) {
             <div style={{ fontSize: "11px", color: "#3A3A3A" }}>剛剛 · {platform.name}</div>
           </div>
         </div>
-        {imgOpt === "upload" && imgPreview && (
+        {imgPreview && (
           <img src={imgPreview} alt="" style={{ width: "100%", maxHeight: "180px", objectFit: "cover" }} />
         )}
-        {imgOpt === "ai" && aiImgPrompt && (
-          <div style={{ height: "72px", background: "#151515", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" }}>
-            <div style={{ fontSize: "11px", color: "#333", textAlign: "center" }}>[ AI 圖片：「{aiImgPrompt}」]</div>
-          </div>
-        )}
-        <div style={{ padding: "14px", fontSize: "13px", color: "#AAA", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>
-          {content || "（無文案）"}
+        <div style={{ padding: "14px", fontSize: "13px", color: generating ? "#444" : "#AAA", lineHeight: "1.7", whiteSpace: "pre-wrap", fontStyle: generating ? "italic" : "normal" }}>
+          {generating ? "AI 生成中..." : (content || "（無文案）")}
         </div>
       </div>
     </div>
@@ -223,6 +218,8 @@ export default function App() {
   const [imgPreview, setImgPreview] = useState(null)
   const [dbPreview, setDbPreview] = useState("")
   const [loadingDb, setLoadingDb] = useState(false)
+  const [aiContent, setAiContent] = useState("")
+  const [generating, setGenerating] = useState(false)
   const [posting, setPosting] = useState(false)
   const [posted, setPosted] = useState(false)
   const [postError, setPostError] = useState(null)
@@ -237,7 +234,31 @@ export default function App() {
     setModal(id); setStep(1); setContentSrc(null); setCustomText("")
     setImgFile(null); setImgPreview(null)
     setDbPreview(""); setLoadingDb(false)
+    setAiContent(""); setGenerating(false)
     setPosting(false); setPosted(false); setPostError(null); setPostLink(null)
+  }
+
+  const generateAiContent = async () => {
+    setGenerating(true)
+    setAiContent("")
+    const platName = PLATFORMS.find(p => p.id === modal)?.name ?? ""
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": "", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 500,
+          system: `你是 OOPS 品牌社群文案師。針對 ${platName} 平台，將以下資料庫文案改寫成吸引人的貼文，加入 emoji 和 hashtag，繁體中文約 100 字。只輸出文案。`,
+          messages: [{ role: "user", content: dbPreview }]
+        })
+      })
+      const data = await res.json()
+      setAiContent(data.content?.[0]?.text ?? dbPreview)
+    } catch {
+      setAiContent(dbPreview)
+    }
+    setGenerating(false)
   }
 
   const selectContentSrc = async (src) => {
@@ -285,7 +306,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: modal,
-          content: contentSrc === "custom" ? customText : null,
+          content: contentSrc === "db" ? aiContent : customText,
           contentSrc,
           imageOption: "upload",
           imageBase64,
@@ -466,9 +487,10 @@ export default function App() {
                 />
               ) : (
                 <PreviewStep
-                  content={contentSrc === "db" ? dbPreview : customText}
-                  imgOpt="upload" imgPreview={imgPreview}
-                  aiImgPrompt="" platform={platform}
+                  content={contentSrc === "db" ? aiContent : customText}
+                  imgPreview={imgPreview}
+                  platform={platform}
+                  generating={generating}
                 />
               )}
             </div>
@@ -497,7 +519,10 @@ export default function App() {
 
                 {!isLastStep ? (
                   <button
-                    onClick={() => setStep(s => s + 1)}
+                    onClick={() => {
+                      setStep(s => s + 1)
+                      if (step === totalSteps - 1 && contentSrc === "db") generateAiContent()
+                    }}
                     disabled={!canNext()}
                     style={{
                       background: canNext() ? platform.bg : "#1A1A1A",
@@ -524,16 +549,34 @@ export default function App() {
                     重試 →
                   </button>
                 ) : (
-                  <button
-                    onClick={handlePost}
-                    style={{
-                      background: platform.bg, border: "none", borderRadius: "8px",
-                      color: "#FFF", padding: "8px 20px", fontSize: "12px",
-                      fontWeight: "600", cursor: "pointer"
-                    }}
-                  >
-                    立即發布 →
-                  </button>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {contentSrc === "db" && (
+                      <button
+                        onClick={generateAiContent}
+                        disabled={generating}
+                        style={{
+                          background: "none", border: "1px solid #333", borderRadius: "8px",
+                          color: generating ? "#444" : "#888", padding: "8px 14px",
+                          fontSize: "12px", cursor: generating ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        {generating ? "生成中..." : "重新生成"}
+                      </button>
+                    )}
+                    <button
+                      onClick={handlePost}
+                      disabled={generating}
+                      style={{
+                        background: generating ? "#1A1A1A" : platform.bg,
+                        border: "none", borderRadius: "8px",
+                        color: generating ? "#333" : "#FFF",
+                        padding: "8px 20px", fontSize: "12px",
+                        fontWeight: "600", cursor: generating ? "not-allowed" : "pointer"
+                      }}
+                    >
+                      立即發布 →
+                    </button>
+                  </div>
                 )}
               </div>
               </div>
