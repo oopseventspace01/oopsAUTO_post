@@ -512,6 +512,17 @@ export default function App() {
                   </button>
                 ) : posting ? (
                   <div style={{ fontSize: "12px", color: "#444" }}>發布中...</div>
+                ) : postError ? (
+                  <button
+                    onClick={() => { setPostError(null); handlePost() }}
+                    style={{
+                      background: "#7A1A1A", border: "none", borderRadius: "8px",
+                      color: "#FFF", padding: "8px 20px", fontSize: "12px",
+                      fontWeight: "600", cursor: "pointer"
+                    }}
+                  >
+                    重試 →
+                  </button>
                 ) : (
                   <button
                     onClick={handlePost}
