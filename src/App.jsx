@@ -1,6 +1,6 @@
 import { useState, useRef } from "react"
 
-const WEBHOOK_BASE = "https://oops01.zeabur.app/webhook-test"
+const WEBHOOK_BASE = "https://oops01.zeabur.app/webhook"
 
 const PLATFORMS = [
   { id: "threads", name: "Threads", subtitle: "文字優先的社群平台", bg: "#1C1C1C", border: "#3A3A3A", letter: "T", totalSteps: 2 },
@@ -246,7 +246,7 @@ export default function App() {
     try {
       let imageBase64 = null
       let imageMimeType = null
-      if (imgOpt === "upload" && imgFile) {
+      if (imgFile) {
         imageMimeType = imgFile.type
         imageBase64 = await new Promise((resolve, reject) => {
           const reader = new FileReader()
