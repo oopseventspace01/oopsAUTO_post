@@ -243,18 +243,26 @@ export default function App() {
     setAiContent("")
     const platName = PLATFORMS.find(p => p.id === modal)?.name ?? ""
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": "", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_KEY}`
+        },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: "gpt-4o-mini",
           max_tokens: 500,
-          system: `你是 OOPS 品牌社群文案師。針對 ${platName} 平台，將以下資料庫文案改寫成吸引人的貼文，加入 emoji 和 hashtag，繁體中文約 100 字。只輸出文案。`,
-          messages: [{ role: "user", content: dbPreview }]
+          messages: [
+            {
+              role: "system",
+              content: `你是 OOPS 品牌社群文案師。針對 ${platName} 平台，將以下資料庫文案改寫成吸引人的貼文，加入 emoji 和 hashtag，繁體中文約 100 字。只輸出文案。`
+            },
+            { role: "user", content: dbPreview }
+          ]
         })
       })
       const data = await res.json()
-      setAiContent(data.content?.[0]?.text ?? dbPreview)
+      setAiContent(data.choices?.[0]?.message?.content ?? dbPreview)
     } catch {
       setAiContent(dbPreview)
     }
