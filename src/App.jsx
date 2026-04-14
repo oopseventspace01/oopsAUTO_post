@@ -8,11 +8,6 @@ const PLATFORMS = [
   { id: "instagram", name: "Instagram", subtitle: "視覺驅動的互動平台", bg: "#C13584", border: "#C13584", letter: "IG", totalSteps: 3, imageRequired: true }
 ]
 
-const DB_ITEMS = [
-  "OOPS 以 AI 驅動的社群自動化，幫助品牌精準觸及目標受眾，互動率提升 3 倍以上。",
-  "從策略規劃到內容發布，OOPS 讓您的行銷流程全面自動化，解放團隊創意潛能。",
-  "整合 AI 分析與自動化排程，OOPS 讓每一則貼文都精準命中目標受眾的心。"
-]
 
 function OptionCard({ selected, onClick, badge, title, sub }) {
   return (
@@ -36,25 +31,19 @@ function OptionCard({ selected, onClick, badge, title, sub }) {
   )
 }
 
-function ContentStep({ contentSrc, onSelect, customText, setCustomText, aiContent, generating }) {
+function ContentStep({ contentSrc, onSelect, customText, setCustomText }) {
   return (
     <div>
       <p style={{ fontSize: "11px", color: "#4A4A4A", marginTop: 0, marginBottom: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>文案來源</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
-        <OptionCard selected={contentSrc === "db"} onClick={() => onSelect("db")} badge="DB" title="資料庫文案" sub="AI 自動潤飾" />
+        <OptionCard selected={contentSrc === "db"} onClick={() => onSelect("db")} badge="DB" title="資料庫文案" sub="n8n 自動讀取" />
         <OptionCard selected={contentSrc === "custom"} onClick={() => onSelect("custom")} badge="✍" title="自行輸入" sub="自由撰寫" />
       </div>
 
       {contentSrc === "db" && (
-        generating
-          ? <div style={{ padding: "18px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#555", textAlign: "center" }}>
-              Claude AI 生成中...
-            </div>
-          : aiContent
-            ? <div style={{ padding: "14px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#AAA", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>
-                {aiContent}
-              </div>
-            : null
+        <div style={{ padding: "14px", background: "#111", border: "1px solid #1E1E1E", borderRadius: "8px", fontSize: "13px", color: "#555", textAlign: "center", lineHeight: "1.7" }}>
+          發布時將由 n8n 自動從資料庫讀取文案
+        </div>
       )}
 
       {contentSrc === "custom" && (
@@ -75,57 +64,19 @@ function ContentStep({ contentSrc, onSelect, customText, setCustomText, aiConten
   )
 }
 
-function ImageStep({ platform, imgOpt, setImgOpt, imgPreview, fileRef, onFileChange, aiImgPrompt, setAiImgPrompt }) {
-  const opts = platform.imageRequired
-    ? [
-        { id: "upload", badge: "↑", title: "自行上傳", sub: "從裝置選取" },
-        { id: "ai", badge: "AI", title: "AI 生成", sub: "輸入描述即可" }
-      ]
-    : [
-        { id: "none", badge: "—", title: "不需圖片", sub: "純文字貼文" },
-        { id: "upload", badge: "↑", title: "自行上傳", sub: "從裝置選取" },
-        { id: "ai", badge: "AI", title: "AI 生成", sub: "輸入描述即可" }
-      ]
-
+function ImageStep({ imgPreview, fileRef, onFileChange }) {
   return (
     <div>
-      <p style={{ fontSize: "11px", color: "#4A4A4A", marginTop: 0, marginBottom: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>
-        {platform.imageRequired ? "圖片設定（必填）" : "是否加入圖片？"}
-      </p>
-      <div style={{ display: "grid", gridTemplateColumns: platform.imageRequired ? "1fr 1fr" : "repeat(3, 1fr)", gap: "8px", marginBottom: "14px" }}>
-        {opts.map(o => (
-          <OptionCard key={o.id} selected={imgOpt === o.id} onClick={() => setImgOpt(o.id)} badge={o.badge} title={o.title} sub={o.sub} />
-        ))}
-      </div>
-
-      {imgOpt === "upload" && (
-        <div>
-          <button onClick={() => fileRef.current?.click()} style={{
-            width: "100%", padding: "20px", background: "#111",
-            border: "1px dashed #333", borderRadius: "8px", color: "#555",
-            fontSize: "13px", cursor: "pointer"
-          }}>
-            {imgPreview ? "✓ 圖片已選擇，點擊更換" : "點擊上傳圖片"}
-          </button>
-          {imgPreview && (
-            <img src={imgPreview} alt="" style={{ width: "100%", maxHeight: "160px", objectFit: "cover", borderRadius: "8px", marginTop: "8px" }} />
-          )}
-        </div>
-      )}
-
-      {imgOpt === "ai" && (
-        <textarea
-          value={aiImgPrompt}
-          onChange={e => setAiImgPrompt(e.target.value)}
-          placeholder="描述圖片內容...（例：現代科技辦公室，冷色調，專業感）"
-          rows={3}
-          style={{
-            width: "100%", background: "#111", border: "1px solid #1E1E1E",
-            borderRadius: "8px", color: "#CCC", padding: "12px", fontSize: "13px",
-            lineHeight: "1.6", resize: "none", boxSizing: "border-box",
-            outline: "none", fontFamily: "inherit"
-          }}
-        />
+      <p style={{ fontSize: "11px", color: "#4A4A4A", marginTop: 0, marginBottom: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>上傳圖片</p>
+      <button onClick={() => fileRef.current?.click()} style={{
+        width: "100%", padding: "20px", background: "#111",
+        border: "1px dashed #333", borderRadius: "8px", color: "#555",
+        fontSize: "13px", cursor: "pointer"
+      }}>
+        {imgPreview ? "✓ 圖片已選擇，點擊更換" : "點擊上傳圖片"}
+      </button>
+      {imgPreview && (
+        <img src={imgPreview} alt="" style={{ width: "100%", maxHeight: "160px", objectFit: "cover", borderRadius: "8px", marginTop: "8px" }} />
       )}
     </div>
   )
@@ -156,10 +107,6 @@ function PreviewStep({ content, imgOpt, imgPreview, aiImgPrompt, platform }) {
         <div style={{ padding: "14px", fontSize: "13px", color: "#AAA", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>
           {content || "（無文案）"}
         </div>
-      </div>
-      <div style={{ padding: "10px 12px", background: "#0E0E0E", border: "1px solid #1A1A1A", borderRadius: "8px" }}>
-        <div style={{ fontSize: "10px", color: "#333", marginBottom: "3px", letterSpacing: "1px", textTransform: "uppercase" }}>Webhook</div>
-        <div style={{ fontSize: "11px", color: "#555", fontFamily: "monospace" }}>POST {WEBHOOK_BASE}/{platform.id}-post</div>
       </div>
     </div>
   )
@@ -267,12 +214,8 @@ export default function App() {
   const [step, setStep] = useState(1)
   const [contentSrc, setContentSrc] = useState(null)
   const [customText, setCustomText] = useState("")
-  const [imgOpt, setImgOpt] = useState(null)
   const [imgFile, setImgFile] = useState(null)
   const [imgPreview, setImgPreview] = useState(null)
-  const [aiImgPrompt, setAiImgPrompt] = useState("")
-  const [aiContent, setAiContent] = useState("")
-  const [generating, setGenerating] = useState(false)
   const [posting, setPosting] = useState(false)
   const [posted, setPosted] = useState(false)
   const [postLink, setPostLink] = useState(null)
@@ -284,34 +227,8 @@ export default function App() {
 
   const openModal = (id) => {
     setModal(id); setStep(1); setContentSrc(null); setCustomText("")
-    setImgOpt(null); setImgFile(null); setImgPreview(null)
-    setAiImgPrompt(""); setAiContent(""); setGenerating(false)
+    setImgFile(null); setImgPreview(null)
     setPosting(false); setPosted(false); setPostLink(null)
-  }
-
-  const selectContentSrc = async (src) => {
-    setContentSrc(src)
-    if (src !== "db") return
-    setGenerating(true)
-    const raw = DB_ITEMS[Math.floor(Math.random() * DB_ITEMS.length)]
-    const platName = PLATFORMS.find(p => p.id === modal)?.name ?? ""
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `你是 OOPS 公司的社群媒體文案師。OOPS 是 AI 行銷自動化領導品牌，協助企業透過自動化提升社群互動。針對 ${platName} 平台，將以下資料庫內容改寫成吸引人的貼文，加入適當 emoji 和 hashtag，繁體中文，約 100 字。只輸出文案，不要其他說明。`,
-          messages: [{ role: "user", content: raw }]
-        })
-      })
-      const data = await res.json()
-      setAiContent(data.content?.[0]?.text ?? raw)
-    } catch {
-      setAiContent(raw + "\n\n✨ #OOPS #AI行銷 #自動化革命")
-    }
-    setGenerating(false)
   }
 
   const handleFileChange = (e) => {
@@ -344,11 +261,11 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: modal,
-          content: contentSrc === "db" ? aiContent : customText,
-          imageOption: imgOpt,
+          content: contentSrc === "custom" ? customText : null,
+          contentSrc,
+          imageOption: "upload",
           imageBase64,
           imageMimeType,
-          aiImagePrompt: aiImgPrompt,
           timestamp: new Date().toISOString()
         })
       })
@@ -363,13 +280,11 @@ export default function App() {
   const canNext = () => {
     if (step === 1) {
       if (!contentSrc) return false
-      if (contentSrc === "db") return !generating && !!aiContent
-      return customText.trim().length > 0
+      if (contentSrc === "custom") return customText.trim().length > 0
+      return true
     }
     if (step === 2 && modal !== "threads") {
-      if (!imgOpt) return false
-      if (imgOpt === "upload") return !!imgFile
-      if (imgOpt === "ai") return aiImgPrompt.trim().length > 0
+      return !!imgFile
     }
     return true
   }
@@ -505,21 +420,18 @@ export default function App() {
                 <SuccessView platform={platform} onClose={() => setModal(null)} postLink={postLink} />
               ) : step === 1 ? (
                 <ContentStep
-                  contentSrc={contentSrc} onSelect={selectContentSrc}
+                  contentSrc={contentSrc} onSelect={setContentSrc}
                   customText={customText} setCustomText={setCustomText}
-                  aiContent={aiContent} generating={generating}
                 />
               ) : step === 2 && modal !== "threads" ? (
                 <ImageStep
-                  platform={platform} imgOpt={imgOpt} setImgOpt={setImgOpt}
                   imgPreview={imgPreview} fileRef={fileRef} onFileChange={handleFileChange}
-                  aiImgPrompt={aiImgPrompt} setAiImgPrompt={setAiImgPrompt}
                 />
               ) : (
                 <PreviewStep
-                  content={contentSrc === "db" ? aiContent : customText}
-                  imgOpt={imgOpt} imgPreview={imgPreview}
-                  aiImgPrompt={aiImgPrompt} platform={platform}
+                  content={contentSrc === "db" ? "（發布時由 n8n 從資料庫讀取）" : customText}
+                  imgOpt="upload" imgPreview={imgPreview}
+                  aiImgPrompt="" platform={platform}
                 />
               )}
             </div>
