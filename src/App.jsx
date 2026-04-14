@@ -327,6 +327,18 @@ export default function App() {
     setPosting(true)
     let link = null
     try {
+      let imageBase64 = null
+      let imageMimeType = null
+      if (imgOpt === "upload" && imgFile) {
+        imageMimeType = imgFile.type
+        imageBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result.split(",")[1])
+          reader.onerror = reject
+          reader.readAsDataURL(imgFile)
+        })
+      }
+
       const res = await fetch(`${WEBHOOK_BASE}/${modal}-post`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -334,6 +346,8 @@ export default function App() {
           platform: modal,
           content: contentSrc === "db" ? aiContent : customText,
           imageOption: imgOpt,
+          imageBase64,
+          imageMimeType,
           aiImagePrompt: aiImgPrompt,
           timestamp: new Date().toISOString()
         })
