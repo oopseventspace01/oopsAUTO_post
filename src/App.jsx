@@ -218,6 +218,7 @@ export default function App() {
   const [imgPreview, setImgPreview] = useState(null)
   const [posting, setPosting] = useState(false)
   const [posted, setPosted] = useState(false)
+  const [postError, setPostError] = useState(null)
   const [postLink, setPostLink] = useState(null)
   const fileRef = useRef(null)
 
@@ -228,7 +229,7 @@ export default function App() {
   const openModal = (id) => {
     setModal(id); setStep(1); setContentSrc(null); setCustomText("")
     setImgFile(null); setImgPreview(null)
-    setPosting(false); setPosted(false); setPostLink(null)
+    setPosting(false); setPosted(false); setPostError(null); setPostLink(null)
   }
 
   const handleFileChange = (e) => {
@@ -242,6 +243,7 @@ export default function App() {
 
   const handlePost = async () => {
     setPosting(true)
+    setPostError(null)
     let link = null
     try {
       let imageBase64 = null
@@ -269,9 +271,21 @@ export default function App() {
           timestamp: new Date().toISOString()
         })
       })
+
+      if (!res.ok) {
+        throw new Error(`伺服器回傳錯誤（${res.status}），請檢查 n8n 流程是否正常運作`)
+      }
+
       const data = await res.json()
+      if (data.error) {
+        throw new Error(`n8n 發生錯誤：${data.error}`)
+      }
       link = data.url ?? data.link ?? data.postUrl ?? data.permalink ?? data.post_url ?? null
-    } catch {}
+    } catch (err) {
+      setPostError(err.message ?? "發布失敗，請稍後再試")
+      setPosting(false)
+      return
+    }
     setPostLink(link)
     setPosting(false)
     setPosted(true)
@@ -438,8 +452,14 @@ export default function App() {
 
             {/* Modal Footer */}
             {!posted && (
+              <div style={{ borderTop: "1px solid #1A1A1A" }}>
+                {postError && (
+                  <div style={{ padding: "10px 20px", background: "#1A0A0A", fontSize: "12px", color: "#E05555", lineHeight: "1.5" }}>
+                    ⚠ {postError}
+                  </div>
+                )}
               <div style={{
-                padding: "14px 20px", borderTop: "1px solid #1A1A1A",
+                padding: "14px 20px",
                 display: "flex", justifyContent: "space-between", alignItems: "center"
               }}>
                 <button
@@ -481,6 +501,7 @@ export default function App() {
                     立即發布 →
                   </button>
                 )}
+              </div>
               </div>
             )}
           </div>
