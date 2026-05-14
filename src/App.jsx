@@ -274,7 +274,7 @@ export default function App() {
     if (src !== "db") return
     setLoadingDb(true)
     try {
-      const res = await fetch("https://oops01.zeabur.app/webhook/get-content")
+      const res = await fetch(`${WEBHOOK_BASE}/get-content`)
       const data = await res.json()
       setDbPreview(data.content ?? "（無資料）")
     } catch {
