@@ -243,32 +243,25 @@ export default function App() {
     setAiContent("")
     const platName = PLATFORMS.find(p => p.id === modal)?.name ?? ""
     try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_KEY}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          max_tokens: 500,
-          messages: [
-            {
-              role: "system",
-              content: `你是 OOPS 品牌社群文案師。針對 ${platName} 平台，將以下資料庫文案改寫成吸引人的貼文，加入 emoji 和 hashtag，繁體中文約 100 字。只輸出文案。`
-            },
-            { role: "user", content: dbPreview }
-          ]
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: `你是 OOPS 品牌社群文案師。針對 ${platName} 平台，將以下資料庫文案改寫成吸引人的貼文，加入 emoji 和 hashtag，繁體中文約 100 字。只輸出文案。`,
+          messages: [{ role: "user", content: dbPreview }]
         })
       })
       const data = await res.json()
-      setAiContent(data.choices?.[0]?.message?.content ?? dbPreview)
+      setAiContent(data.content?.[0]?.text ?? dbPreview)
     } catch {
       setAiContent(dbPreview)
     }
     setGenerating(false)
   }
 
+  // ← 修正：改用 WEBHOOK_BASE，不再寫死舊網址
   const selectContentSrc = async (src) => {
     setContentSrc(src)
     if (src !== "db") return
@@ -296,42 +289,62 @@ export default function App() {
     setPosting(true)
     setPostError(null)
     let link = null
+    const content = contentSrc === "db" ? aiContent : customText
+
     try {
-      let imageBase64 = null
-      let imageMimeType = null
-      if (imgFile) {
-        imageMimeType = imgFile.type
-        imageBase64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result.split(",")[1])
-          reader.onerror = reject
-          reader.readAsDataURL(imgFile)
+      let res
+
+      if (modal === "facebook") {
+        // ── Facebook：直接送 binary（multipart/form-data）──
+        const formData = new FormData()
+        formData.append("platform", modal)
+        formData.append("content", content)
+        formData.append("contentSrc", contentSrc)
+        formData.append("timestamp", new Date().toISOString())
+        if (imgFile) formData.append("image", imgFile) // binary 直接附上
+
+        res = await fetch(`${WEBHOOK_BASE}/facebook-post`, {
+          method: "POST",
+          body: formData  // 不加 Content-Type，瀏覽器自動加 multipart boundary
+        })
+
+      } else {
+        // ── Threads / Instagram：送 JSON + base64 ──
+        let imageBase64 = null
+        let imageMimeType = null
+        if (imgFile) {
+          imageMimeType = imgFile.type
+          imageBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result.split(",")[1])
+            reader.onerror = reject
+            reader.readAsDataURL(imgFile)
+          })
+        }
+
+        res = await fetch(`${WEBHOOK_BASE}/${modal}-post`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platform: modal,
+            content,
+            contentSrc,
+            imageOption: imgFile ? "upload" : "none",
+            imageBase64,
+            imageMimeType,
+            timestamp: new Date().toISOString()
+          })
         })
       }
-
-      const res = await fetch(`${WEBHOOK_BASE}/${modal}-post`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: modal,
-          content: contentSrc === "db" ? aiContent : customText,
-          contentSrc,
-          imageOption: "upload",
-          imageBase64,
-          imageMimeType,
-          timestamp: new Date().toISOString()
-        })
-      })
 
       if (!res.ok) {
         throw new Error(`伺服器回傳錯誤（${res.status}），請檢查 n8n 流程是否正常運作`)
       }
 
       const data = await res.json()
-      if (data.error) {
-        throw new Error(`n8n 發生錯誤：${data.error}`)
-      }
+      if (data.error) throw new Error(`n8n 發生錯誤：${data.error}`)
       link = data.url ?? data.link ?? data.postUrl ?? data.permalink ?? data.post_url ?? null
+
     } catch (err) {
       setPostError(err.message ?? "發布失敗，請稍後再試")
       setPosting(false)
